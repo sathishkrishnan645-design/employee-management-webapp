@@ -32,19 +32,17 @@ pipeline {
                 }
             }
         }
-
-        stage('Deploy to Singapore EC2') {
-            steps {
-                sshagent(['sg-ec2-ssh']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@18.142.30.111 '
-                            mkdir -p ~/employee-management-webapp &&
-                            cd ~/employee-management-webapp &&
-                            aws s3 cp s3://employee-app-artifacts/employee-app.zip . --region ap-southeast-1 &&
-                            unzip -o employee-app.zip &&
-                            nohup python3 app.py > app.log 2>&1 &
-                        '
-                    """
+	stage('Deploy to Singapore EC2') {
+    		steps {
+        		sh '''
+        			ssh -i /var/lib/jenkins/sg-ec2-key.pem ec2-user@18.142.30.111 << 'EOF'
+        			mkdir -p ~/employee-management-webapp
+        			cd ~/employee-management-webapp
+        			aws s3 cp s3://employee-app-artifacts/employee-app.zip .
+        			unzip -o employee-app.zip
+        			nohup python3 app.py &
+        		EOF
+        		'''
                 }
             }
         }
