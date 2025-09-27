@@ -30,9 +30,21 @@ pipeline {
                 // Uses Jenkins AWS credentials to upload via AWS CLI
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'jenkins-s3-user']]) {
                     sh 'aws s3 cp employee-app.zip s3://employee-app-artifacts/ --region ap-southeast-1'
-                }
-            }
+          
+        stage('Deploy to Singapore EC2') {
+    steps {
+        sshagent(['sg-ec2-ssh']) {
+            sh """
+                ssh -o StrictHostKeyChecking=no ec2-user@18.142.30.111 '
+                    mkdir -p ~/employee-management-webapp &&
+                    cd ~/employee-management-webapp &&
+                    aws s3 cp s3://employee-app-artifacts/employee-app.zip . --region ap-southeast-1 &&
+                    unzip -o employee-app.zip &&
+                    nohup python3 app.py > app.log 2>&1 &
+                '
+            """
         }
     }
 }
+
 
