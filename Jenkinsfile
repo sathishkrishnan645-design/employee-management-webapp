@@ -3,28 +3,41 @@ pipeline {
 
     environment {
         EC2_USER = 'ec2-user'
-        EC2_HOST = '18.142.30.111' // Singapore EC2
-        SSH_KEY = '/var/lib/jenkins/sg-ec2-key.pem'
-        APP_ZIP = 'employee-app.zip'
-        REMOTE_DIR = '/home/ec2-user/employee-app'
+        EC2_HOST = '18.142.30.111'
+        SSH_KEY_PATH = '/var/lib/jenkins/sg-ec2-key.pem'
+        S3_BUCKET = 'your-s3-bucket-name'
+        APP_NAME = 'employee-app.zip'
+        APP_DIR = '/home/ec2-user/employee-app'
     }
 
     stages {
-        stage('Upload to EC2') {
+        stage('Checkout Code') {
             steps {
-                sshagent(credentials: ['ec2-user-ssh-key']) { // Jenkins credential ID
-                    sh """
-                        scp -i ${SSH_KEY} ${APP_ZIP} ${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}/
-                    """
-                }
+                git url: 'https://github.com/sathishkrishnan645-design/employee-management-webapp.git',
+                    credentialsId: 'github-credentials',
+                    branch: 'main'
             }
         }
 
-        stage('Deploy on EC2') {
+        stage('Build App') {
             steps {
-                sshagent(credentials: ['ec2-user-ssh-key']) {
+                echo 'Skipping build since employee-app.zip is already in S3'
+                // If you need npm build, uncomment below:
+                // sh 'npm install'
+                // sh 'zip -r employee-app.zip .'
+            }
+        }
+
+        stage('Deploy to Singapore EC2') {
+            steps {
+                sshagent(['ec2-user']) {
                     sh """
-                        ssh -i ${SSH_KEY} ${EC2_USER}@${EC2_HOST} 'unzip -o ${REMOTE_DIR}/${APP_ZIP} -d ${REMOTE_DIR} && echo Deployment complete'
+                    ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_PATH} ${EC2_USER}@${EC2_HOST} \\
+                    'mkdir -p ${APP_DIR} && \\
+                    aws s3 cp s3://${S3_BUCKET}/${APP_NAME} ${APP_DIR}/ && \\
+                    unzip -o ${APP_DIR}/${APP_NAME} -d ${APP_DIR} && \\
+                    pkill -f app.py || true && \\
+                    nohup python3 ${APP_DIR}/app.py > ${APP_DIR}/app.log 2>&1 &'
                     """
                 }
             }
@@ -33,10 +46,10 @@ pipeline {
 
     post {
         success {
-            echo "Application deployed successfully!"
+            echo 'Deployment succeeded!'
         }
         failure {
-            echo "Deployment failed. Check logs."
+            echo 'Deployment failed. Check logs!'
         }
     }
 }
