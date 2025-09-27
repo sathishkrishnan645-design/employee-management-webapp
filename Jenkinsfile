@@ -43,7 +43,7 @@ pipeline {
             steps {
                 withAWS(region: 'ap-southeast-1', credentials: 'aws-creds') {
                     s3Upload(
-                        bucket: 'your-s3-bucket-name',
+                        bucket: 'employee-app-artifacts',
                         includePathPattern: "${ZIP_FILE}",
                         workingDir: "${WORKSPACE_DIR}",
                         path: '',
