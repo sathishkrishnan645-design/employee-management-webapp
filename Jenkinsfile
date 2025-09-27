@@ -32,6 +32,7 @@ pipeline {
                          workingDir: '', 
                          path: '', 
                          acl: 'Private')
+		        region: 'ap-southeast-1'	
             }
         }
     }
