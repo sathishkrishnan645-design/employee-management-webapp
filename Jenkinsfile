@@ -39,5 +39,5 @@ pipeline {
             region: 'ap-southeast-1'   // <- region inside parentheses
         )
     }
+  }
 }
-
