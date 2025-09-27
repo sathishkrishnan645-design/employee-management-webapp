@@ -28,7 +28,7 @@ pipeline {
         stage('Upload to S3') {
             steps {
                 // Uses Jenkins AWS credentials to upload via AWS CLI
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'jenkins-s3-user']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                     sh 'aws s3 cp employee-app.zip s3://employee-app-artifacts/ --region ap-southeast-1'
                 }
             }
