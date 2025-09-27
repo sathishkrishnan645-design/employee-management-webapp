@@ -30,7 +30,7 @@ pipeline {
 
         stage('Deploy to Singapore EC2') {
             steps {
-                sshagent(['ec2-user']) {
+                sshagent(['sg-ec2-key']) {
                     sh """
                     ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_PATH} ${EC2_USER}@${EC2_HOST} \\
                     'mkdir -p ${APP_DIR} && \\
