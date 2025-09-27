@@ -2,64 +2,80 @@ pipeline {
     agent any
 
     environment {
-        GIT_CREDENTIALS = 'github-credentials'
-        S3_BUCKET = 'employee-app-artifacts'
-        AWS_REGION = 'ap-southeast-1'
-        EC2_KEY_PATH = '/var/lib/jenkins/sg-ec2-key.pem'
-        EC2_USER = 'ec2-user'
-        EC2_HOST = '18.142.30.111'
-        APP_DIR = 'employee-management-webapp'
+        APP_NAME = "employee-management-webapp"
+        EC2_USER = "ec2-user"
+        EC2_HOST = "18.142.30.111"
+        SSH_CREDENTIALS_ID = "sg-ec2-key" // Your Jenkins SSH credential ID
+        DEPLOY_DIR = "/home/ec2-user/${APP_NAME}"
+        WORKSPACE_DIR = "${env.WORKSPACE}"
+        ZIP_FILE = "${APP_NAME}.zip"
     }
 
     stages {
-        stage('Checkout SCM') {
+
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/sathishkrishnan645-design/employee-management-webapp.git', credentialsId: "${GIT_CREDENTIALS}"
+                git branch: 'main',
+                    url: 'https://github.com/sathishkrishnan645-design/employee-management-webapp.git'
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Building Employee Management Web App...'
-                sh '''
-                zip -r employee-app.zip Jenkinsfile README.md app.py
-                '''
+                echo "Building application..."
+                // Example for Node.js app:
+                sh 'npm install'
+                sh 'npm run build'
+                
+                // Example for Java app (uncomment if needed):
+                // sh './gradlew build'
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo "Zipping application..."
+                sh "zip -r ${ZIP_FILE} *"
             }
         }
 
         stage('Upload to S3') {
             steps {
-                withAWS(region: "${AWS_REGION}", credentials: 'aws-creds') {
-                    s3Upload(bucket: "${S3_BUCKET}",
-                             includePathPattern: 'employee-app.zip',
-                             workingDir: '',
-                             path: '',
-                             acl: 'Private')
+                withAWS(region: 'ap-southeast-1', credentials: 'aws-creds') {
+                    s3Upload(
+                        bucket: 'your-s3-bucket-name',
+                        includePathPattern: "${ZIP_FILE}",
+                        workingDir: "${WORKSPACE_DIR}",
+                        path: '',
+                        acl: 'Private'
+                    )
                 }
             }
         }
 
         stage('Deploy to Singapore EC2') {
             steps {
-                sh """
-                ssh -i ${EC2_KEY_PATH} ${EC2_USER}@${EC2_HOST} << 'EOF'
-                mkdir -p ~/${APP_DIR}
-                cd ~/${APP_DIR}
-                aws s3 cp s3://${S3_BUCKET}/employee-app.zip .
-                unzip -o employee-app.zip
-                nohup python3 app.py &
-                EOF
-                """
+                sshagent([SSH_CREDENTIALS_ID]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
+                            mkdir -p ${DEPLOY_DIR} &&
+                            unzip -o /home/${EC2_USER}/${ZIP_FILE} -d ${DEPLOY_DIR} &&
+                            cd ${DEPLOY_DIR} &&
+                            # Run any app start commands below
+                            # Example: npm install && npm start
+                        '
+                    """
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo "Deployment completed successfully!"
         }
         failure {
-            echo 'Pipeline failed. Check logs.'
+            echo "Pipeline failed. Check logs!"
         }
     }
 }
