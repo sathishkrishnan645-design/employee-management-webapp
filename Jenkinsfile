@@ -27,17 +27,16 @@ pipeline {
 
         stage('Upload to S3') {
             steps {
-                s3Upload(bucket: "${S3_BUCKET}", 
-                         stage('Upload to S3') {
-    steps {
-        s3Upload(
-            bucket: "${S3_BUCKET}",
-            includePathPattern: 'employee-app.zip',
-            workingDir: '',
-            path: '',
-            acl: 'Private',
-            region: 'ap-southeast-1'   // <- region inside parentheses
-        )
+                s3Upload(
+                    bucket: "${S3_BUCKET}",
+                    includePathPattern: 'employee-app.zip',
+                    workingDir: '',
+                    path: '',
+                    acl: 'Private',
+                    region: 'ap-southeast-1'
+                )
+            }
+        }
     }
-  }
 }
+
